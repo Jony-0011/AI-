@@ -14,12 +14,13 @@ from docx import Document
 class DocumentReader:
     """文档读取器类，处理文档读取与解析"""
 
-    def __init__(self, file_path: str):
+    def __init__(self, file_path: str = None):
         self.file_path = file_path
         self.text_content = ""
         self.images = []
         self.doc_type = None
-        self._validate_file()
+        if file_path:
+            self._validate_file()
 
     def _validate_file(self):
         """验证文件是否存在和格式是否支持"""
@@ -59,8 +60,10 @@ class DocumentReader:
 
     def _extract_docx_images(self, doc):
         """从docx中提取图片信息"""
+        images_found = set()
+        
         for rel in doc.part.rels.values():
-            if "image" in rel.target_ref:
+            if "image" in rel.target_ref.lower():
                 image_info = {
                     'format': rel.target_ref.split('.')[-1].lower(),
                     'rid': rel.rId
@@ -72,7 +75,20 @@ class DocumentReader:
                 except:
                     image_info['size_bytes'] = 0
 
-                self.images.append(image_info)
+                if rel.rId not in images_found:
+                    self.images.append(image_info)
+                    images_found.add(rel.rId)
+        
+        for paragraph in doc.paragraphs:
+            for run in paragraph.runs:
+                if run._element.xpath('.//pic:pic'):
+                    if 'inline_image' not in images_found:
+                        self.images.append({
+                            'format': 'png',
+                            'type': 'inline',
+                            'rid': f'inline_{len(self.images)}'
+                        })
+                        images_found.add('inline_image')
 
     def read(self) -> Dict[str, Any]:
         """统一的读取入口方法"""
@@ -97,3 +113,30 @@ class DocumentReader:
                     if line not in sections:
                         sections.append(line)
         return sections
+
+    def read_docx_from_bytes(self, file_bytes: bytes) -> Dict[str, Any]:
+        """从字节流读取docx文档，提取文本和图片信息"""
+        from io import BytesIO
+        
+        doc = Document(BytesIO(file_bytes))
+        text_parts = []
+
+        for paragraph in doc.paragraphs:
+            if paragraph.text.strip():
+                text_parts.append(paragraph.text)
+
+        for table in doc.tables:
+            for row in table.rows:
+                for cell in row.cells:
+                    if cell.text.strip():
+                        text_parts.append(cell.text)
+
+        self.text_content = '\n'.join(text_parts)
+        self.images = []
+        self._extract_docx_images(doc)
+
+        return {
+            'text': self.text_content,
+            'images': self.images,
+            'file_type': '.docx'
+        }
