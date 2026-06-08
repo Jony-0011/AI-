@@ -1,0 +1,31 @@
+{
+  "scoring": {
+    "sections": {
+      "structure": {
+        "weight": 20,
+        "description": "结构完整性",
+        "keywords": ["目的", "原理", "步骤", "结果", "反思", "总结", "实验目的", "实验原理", "实验步骤", "实验结果", "实验反思", "实验总结"]
+      },
+      "content": {
+        "weight": 35,
+        "description": "内容准确性",
+        "similarity_threshold": 0.7
+      },
+      "images": {
+        "weight": 20,
+        "description": "图片质量",
+        "min_count": 3,
+        "max_score_per_image": 5
+      },
+      "format": {
+        "weight": 15,
+        "description": "格式规范性"
+      },
+      "reflection": {
+        "weight": 10,
+        "description": "反思深度"
+      }
+    },
+    "total_score": 100
+  }
+}
